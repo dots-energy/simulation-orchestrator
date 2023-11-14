@@ -27,7 +27,7 @@ class CalculationService(BaseModel):
                                    description="Name of the calculation service,"
                                                " as described in the code generator yaml config file")
     service_image_url: str = Field(default='<pvinstallation_service_docker_image_url>',
-                                   description="The URL of the (ci.tno.nl) docker image file")
+                                   description="The URL of the docker image file")
     nr_of_models: int = Field(default=1, description="'0' will create a model (container) per ESDL object")
 
 

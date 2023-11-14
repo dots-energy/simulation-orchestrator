@@ -2,9 +2,9 @@
 
 function usage {
     echo "usage: deploy_dots [-k] [-u username] [-p password]"
-    echo "  -k            create kind cluster (optional, do not use for Azure)"
-    echo "  -u username       specify username"
-    echo "  -p password   specify password"
+    echo "  -k              create kind cluster (optional, do not use for Azure)"
+    echo "  -u <username>   specify username"
+    echo "  -p <password>   specify password"
     exit 1
 }
 
