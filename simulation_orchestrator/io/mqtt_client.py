@@ -102,7 +102,7 @@ class MqttClient:
 
     def _process_message(self, client: Client, message):
         topic_parts = message.topic.split('/')
-        LOGGER.debug(f" [received] {message.topic}: {message.payload}")
+        LOGGER.info(f" [received] {message.topic}: {message.payload}")
 
         if topic_parts[5] == 'ModelsReady':
             simulation_id = topic_parts[4]
@@ -131,6 +131,7 @@ class MqttClient:
                     new_model_state = ProgressState.PARAMETERIZED
                 else:
                     new_model_state = ProgressState.STEP_FINISHED
+
                 simulation_state = self.simulation_inventory.update_model_state_and_get_simulation_state(
                     simulation_id=simulation_id,
                     model_id=model_id,
@@ -143,7 +144,14 @@ class MqttClient:
                             new_state=ProgressState.TERMINATED_SUCCESSFULL
                         )
                         self.send_simulation_done(simulation_id)
-                        LOGGER.info(f"All time steps finished for simulation '{simulation_id}'")
+                        LOGGER.info(f"All time steps finished for simulation '{simulation_id}'")                        
+                        if self.simulation_inventory.nr_of_queued_simulations() > 0:
+                            if self.simulation_inventory.active_simulation_id_in_queue() == simulation_id:
+                                self.simulation_inventory.pop_simulation_in_queue()
+                                next_simulation_in_queue = self.simulation_inventory.get_simulation(self.simulation_inventory.active_simulation_id_in_queue())
+                                LOGGER.info(f"Starting next simulation in queue with simulation_id: '{next_simulation_in_queue.simulation_id}'")
+                                self.send_deploy_models(next_simulation_in_queue.simulator_id, next_simulation_in_queue.simulation_id,
+                                            next_simulation_in_queue.keep_logs_hours, next_simulation_in_queue.log_level)
                     else:
                         self._send_new_step(simulation_id)
 

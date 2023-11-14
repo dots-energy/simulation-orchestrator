@@ -23,12 +23,8 @@ from simulation_orchestrator.types import SimulationId, ProgressState
 simulation_inventory: SimulationInventory
 mqtt_client: MqttClient
 
-
 def start_new_simulation(new_simulation: Simulation) -> SimulationId:
-    try:
-        model_list = parse_esdl.get_model_list(new_simulation.calculation_services, new_simulation.esdl_base64string)
-    except Exception as ex:
-        raise IOError(f"Error getting Model list from ESDL: {ex},")
+    model_list = parse_esdl.get_model_list(new_simulation.calculation_services, new_simulation.esdl_base64string)
 
     simulation_id = simulation_inventory.add_simulation(new_simulation)
     simulation_inventory.add_models_to_simulation(new_simulation.simulation_id, model_list)
@@ -37,6 +33,14 @@ def start_new_simulation(new_simulation: Simulation) -> SimulationId:
 
     return simulation_id
 
+def queue_new_simulation(new_simulation: Simulation) -> SimulationId:
+    model_list = parse_esdl.get_model_list(new_simulation.calculation_services, new_simulation.esdl_base64string)
+    simulation_id = simulation_inventory.queue_simulation(new_simulation)
+    simulation_inventory.add_models_to_simulation(new_simulation.simulation_id, model_list)
+    if simulation_inventory.nr_of_queued_simulations() == 1:
+        mqtt_client.send_deploy_models(new_simulation.simulator_id, new_simulation.simulation_id,
+                                   new_simulation.keep_logs_hours, new_simulation.log_level)
+    return simulation_id
 
 def get_simulation_and_status(simulation_id: SimulationId) -> typing.Tuple[typing.Union[Simulation, None], str]:
     return (
@@ -44,14 +48,12 @@ def get_simulation_and_status(simulation_id: SimulationId) -> typing.Tuple[typin
         simulation_inventory.get_status_description(simulation_id)
     )
 
-
 def get_simulation_and_status_list() -> typing.List[typing.Tuple[typing.Union[Simulation, None], str]]:
     simulation_ids = simulation_inventory.get_simulation_ids()
     return [
         get_simulation_and_status(simulation_id)
         for simulation_id in simulation_ids
     ]
-
 
 def terminate_simulation(simulation_id: SimulationId) -> typing.Tuple[typing.Union[Simulation, None], str]:
     mqtt_client.send_simulation_done(simulation_id)
