@@ -12,7 +12,10 @@
 #  Manager:
 #      TNO
 
-from fastapi import APIRouter, HTTPException
+from typing import Annotated
+from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi.security import OAuth2PasswordRequestForm
+
 import typing
 from datetime import datetime, timedelta
 from rest.oauth.OAuthUtilities import authenticate_user, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, get_current_user
