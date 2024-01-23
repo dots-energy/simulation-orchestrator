@@ -42,6 +42,7 @@ class Simulation:
     calculation_start_datetime: datetime
     calculation_end_datetime: typing.Optional[datetime]
     current_step_calculation_start_datetime: typing.Optional[datetime]
+    modelparameters_start_datetime: typing.Optional[datetime]
     model_inventory: ModelInventory
     error_message: str
 
@@ -79,6 +80,7 @@ class Simulation:
         self.calculation_start_datetime = datetime.now()
         self.calculation_end_datetime = None
         self.current_step_calculation_start_datetime = None
+        self.modelparameters_start_datetime = None
         self.model_inventory = ModelInventory()
         self.error_message = ""
         self.terminated = False
@@ -228,7 +230,10 @@ class SimulationInventory:
     def start_step_calculation_time_counting(self, simulation_id: SimulationId):
         self.get_simulation(simulation_id).current_step_calculation_start_datetime = datetime.now()
 
-    def get_simulation_ids_exceeding_step_calc_time(self) -> typing.List[SimulationId]:
+    def start_model_parameters_time_counting(self, simulation_id: SimulationId):
+        self.get_simulation(simulation_id).modelparameters_start_datetime = datetime.now()
+
+    def get_simulation_ids_exceeding_timeout_time(self) -> typing.List[SimulationId]:
         simulation_ids = []
         for simulation_id, simulation in self.activeSimulations.items():
             if not simulation.terminated and simulation.current_step_calculation_start_datetime:
@@ -236,6 +241,11 @@ class SimulationInventory:
                         minutes=simulation.max_step_calc_time_minutes):
                     LOGGER.info(
                         f"Exceeded step calculation time for simulation: '{simulation.simulation_name}' - '{simulation_id}'")
+                    simulation_ids.append(simulation_id)
+            elif not simulation.terminated and simulation.current_step_calculation_start_datetime == None and simulation.modelparameters_start_datetime:
+                if datetime.now() > simulation.modelparameters_start_datetime + timedelta(
+                        minutes=simulation.max_step_calc_time_minutes):
+                    LOGGER.info(f"Exceeded model parameter for simulation: '{simulation.simulation_name}' - '{simulation_id}'")
                     simulation_ids.append(simulation_id)
         return simulation_ids
 

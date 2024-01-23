@@ -2,7 +2,7 @@
 
 # login first: docker login -u dotsenergyframework
 
-VERSION=0.0.7
+VERSION=0.0.8
 REPOSITORY="dotsenergyframework/simulation-orchestrator"
 
 docker build -t ${REPOSITORY}:${VERSION} ./..
