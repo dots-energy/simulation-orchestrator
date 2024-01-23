@@ -17,6 +17,7 @@ import threading
 import typing
 import sched
 import time
+import string
 from datetime import datetime
 
 from paho.mqtt.client import Client
@@ -212,8 +213,7 @@ class MqttClient:
     def _send_model_parameters(self, simulation_id: SimulationId):
         simulation = self.simulation_inventory.get_simulation(simulation_id)
         for model in self.simulation_inventory.get_all_models(simulation_id):
-            model_parameters_message = messages.ModelParameters(
-                parameters_dict=json.dumps({
+            parameters_dict=json.dumps({
                     'simulation_name': simulation.simulation_name,
                     'start_timestamp': simulation.simulation_start_datetime.timestamp(),
                     'time_step_seconds': simulation.time_step_seconds,
@@ -221,7 +221,9 @@ class MqttClient:
                     'calculation_services': simulation.calculation_services,
                     'esdl_base64string': simulation.esdl_base64string,
                     'esdl_ids': model.esdl_ids,
-                })
+                }, ensure_ascii=False).encode(encoding = 'UTF-8', errors = 'strict')
+            model_parameters_message = messages.ModelParameters(
+                parameters_dict=parameters_dict
             )
             self.mqtt_client.publish(
                 topic=f"/lifecycle/dots-so/model/{simulation_id}/{model.model_id}/ModelParameters",
