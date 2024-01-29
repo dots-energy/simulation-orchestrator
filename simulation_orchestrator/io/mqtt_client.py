@@ -104,7 +104,7 @@ class MqttClient:
         s = sched.scheduler(time.time, time.sleep)
 
         def check_calc_time(sc):
-            for simulation_id in self.simulation_inventory.get_simulation_ids_exceeding_step_calc_time():
+            for simulation_id in self.simulation_inventory.get_simulation_ids_exceeding_timeout_time():
                 self.send_simulation_done(simulation_id)
                 self.queue_next_simulation(simulation_id)
             sc.enter(10, 1, check_calc_time, (sc,))
@@ -230,6 +230,7 @@ class MqttClient:
                 payload=model_parameters_message.SerializeToString()
             )
         LOGGER.info(f" [sent] lifecycle/dots-so/model/{simulation_id}/+/ModelParameters")
+        self.simulation_inventory.start_model_parameters_time_counting(simulation_id)
 
     def _send_new_step(self, simulation_id: SimulationId):
         self.simulation_inventory.set_state_for_all_models(simulation_id, ProgressState.STEP_STARTED)
