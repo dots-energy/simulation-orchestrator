@@ -219,13 +219,13 @@ class SimulationInventory:
 
     def get_status_description(self, simulation_id: SimulationId) -> str:
         state = self.get_simulation_state(simulation_id)
-        if not state:
+        if state == None:
             return f"Simulation id '{simulation_id}' could not be found."
-        if state == ProgressState.STEP_STARTED:
+        elif state == ProgressState.STEP_STARTED:
             simulation = self.get_simulation(simulation_id)
             return f"Calculating time step {simulation.current_time_step_nr} (of {simulation.nr_of_time_steps})"
         else:
-            return str(state)
+            return progress_state_description[state]
 
     def start_step_calculation_time_counting(self, simulation_id: SimulationId):
         self.get_simulation(simulation_id).current_step_calculation_start_datetime = datetime.now()

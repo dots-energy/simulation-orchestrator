@@ -100,6 +100,17 @@ class MqttClient:
                 self.send_deploy_models(next_simulation_in_queue.simulator_id, next_simulation_in_queue_id,
                                             next_simulation_in_queue.keep_logs_hours, next_simulation_in_queue.log_level)
 
+    def terminate_simulation(self, simulation_id):
+        self.send_simulation_done(simulation_id)
+        self.simulation_inventory.set_state_for_all_models(simulation_id, ProgressState.TERMINATED_FAILED)
+        self.queue_next_simulation(simulation_id)
+        simulation = self.simulation_inventory.get_simulation(simulation_id)
+        status_description = self.simulation_inventory.get_status_description(simulation_id)
+        return (
+            simulation,
+            status_description
+        )
+
     def _check_step_calc_time(self):
         s = sched.scheduler(time.time, time.sleep)
 
@@ -125,7 +136,7 @@ class MqttClient:
             self._send_model_parameters(simulation_id)
 
             self.simulation_inventory.release_simulation(simulation_id)
-        if len(topic_parts) > 6:
+        if len(topic_parts) > 6 and not topic_parts[6] == 'ModelHasTerminated':
             simulation_id = topic_parts[4]
             self.simulation_inventory.lock_simulation(simulation_id)
 
@@ -138,6 +149,7 @@ class MqttClient:
                 error_occurred = messages.ErrorOccurred()
                 error_occurred.ParseFromString(message.payload)
                 self.simulation_inventory.error_message = error_occurred.error_message
+                self.terminate_simulation(simulation_id)
             elif topic_parts[6] == 'Parameterized' or topic_parts[6] == 'CalculationsDone':
                 if topic_parts[6] == 'Parameterized':
                     new_model_state = ProgressState.PARAMETERIZED
@@ -221,7 +233,7 @@ class MqttClient:
                     'calculation_services': simulation.calculation_services,
                     'esdl_base64string': simulation.esdl_base64string,
                     'esdl_ids': model.esdl_ids,
-                }, ensure_ascii=False).encode(encoding = 'UTF-8', errors = 'strict')
+                }, ensure_ascii=False).encode(encoding = 'UTF-8', errors = 'strict').decode("utf-8")
             model_parameters_message = messages.ModelParameters(
                 parameters_dict=parameters_dict
             )
