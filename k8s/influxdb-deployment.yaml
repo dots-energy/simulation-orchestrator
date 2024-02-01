@@ -24,6 +24,12 @@ spec:
         volumeMounts:
           - mountPath: /var/lib/influxdb
             name: influxdb-claim
+        env:
+        - name: INFLUXDB_HTTP_MAX_BODY_SIZE
+          valueFrom:
+            configMapKeyRef:
+              name: env-configmap
+              key: influxdb-http-max-body-size
       volumes:
         - name: influxdb-claim
           persistentVolumeClaim:
