@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: dots
+  name: helics-broker
+  labels:
+    app: helics-broker # pod name
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: helics-broker
+  template: # pod blueprint
+    metadata:
+      labels:
+        app: helics-broker # pod name
+    spec:
+      imagePullSecrets:
+      - name: ci-tno-dots
+      containers:
+      - name: helics-broker # container name
+        image: dotsenergyframework/helics-broker:0.0.1
+        imagePullPolicy: Always
+        ports:
+          - containerPort: 23404 # service port
+            hostPort: 23404 # needs to match containerPort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: dots
+  name: helics-broker
+spec:
+  selector:
+    app: helics-broker
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      port: 23404
+      targetPort: 23404 

@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: dots
+  name: helics-example-battery
+  labels:
+    app: helics-example-battery # pod name
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: helics-example-battery
+  template: # pod blueprint
+    metadata:
+      labels:
+        app: helics-example-battery # pod name
+    spec:
+      imagePullSecrets:
+      - name: ci-tno-dots
+      containers:
+      - name: helics-example-battery # container name
+        image: dotsenergyframework/helics-example-battery:0.0.1
+        imagePullPolicy: Always
