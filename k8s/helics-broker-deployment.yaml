@@ -22,8 +22,8 @@ spec:
         image: dotsenergyframework/helics-broker:0.0.1
         imagePullPolicy: Always
         ports:
-          - containerPort: 23404 # service port
-            hostPort: 23404 # needs to match containerPort
+          - containerPort: 30000 # service port
+            hostPort: 30000
 ---
 apiVersion: v1
 kind: Service
@@ -36,5 +36,22 @@ spec:
   type: ClusterIP
   ports:
     - protocol: TCP
-      port: 23404
-      targetPort: 23404 
+      port: 30000 
+# apiVersion: v1
+# kind: Pod
+# metadata:
+#   namespace: dots
+#   name: helics-broker
+#   labels:
+#     app: helics-broker # pod name
+# spec:
+#   hostname: helics-broker
+#   imagePullSecrets:
+#   - name: ci-tno-dots
+#   containers:
+#   - name: helics-broker # container name
+#     image: dotsenergyframework/helics-broker:0.0.1
+#     imagePullPolicy: Always
+#     ports:
+#       - containerPort: 30000 # service port
+#         hostPort: 30000

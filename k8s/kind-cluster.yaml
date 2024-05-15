@@ -25,3 +25,7 @@ nodes:
     hostPort: 8011
     listenAddress: "127.0.0.1"
     protocol: TCP
+  - containerPort: 30000
+    hostPort: 30000
+    listenAddress: "127.0.0.1"
+    protocol: TCP
