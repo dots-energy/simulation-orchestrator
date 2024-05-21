@@ -25,6 +25,7 @@ from rest.schemas.user_schemas import User
 from simulation_orchestrator import parse_esdl, actions
 from simulation_orchestrator.models.simulation_inventory import Simulation
 from simulation_orchestrator.types import ProgressState
+import time
 
 router = APIRouter()
 

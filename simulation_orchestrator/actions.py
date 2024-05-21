@@ -18,11 +18,13 @@ from rest.schemas.simulation_schemas import SimulationPost
 from simulation_orchestrator import parse_esdl
 from simulation_orchestrator.io.mqtt_client import MqttClient
 from simulation_orchestrator.models.simulation_inventory import SimulationInventory, Simulation
+from simulation_orchestrator.models.simulation_executor import SimulationExecutor
 
 from simulation_orchestrator.types import SimulationId, ProgressState
 
 simulation_inventory: SimulationInventory
-mqtt_client: MqttClient
+simulation_executor: SimulationExecutor
+mqtt_client : MqttClient
 
 def create_new_simulation(simulation_post : SimulationPost) -> Simulation:
     
@@ -50,7 +52,7 @@ def create_new_simulation(simulation_post : SimulationPost) -> Simulation:
         sim_nr_of_steps=simulation_post.nr_of_time_steps,
         keep_logs_hours=simulation_post.keep_logs_hours,
         log_level=simulation_post.log_level,
-        calculation_services=calculation_services,
+        calculation_services=simulation_post.calculation_services,
         esdl_base64string=simulation_post.esdl_base64string
     )
 
@@ -64,8 +66,7 @@ def start_new_simulation(simulation_post: SimulationPost) -> SimulationId:
 
     simulation_id = simulation_inventory.add_simulation(new_simulation)
     simulation_inventory.add_models_to_simulation(new_simulation.simulation_id, model_list)
-    mqtt_client.send_deploy_models(new_simulation.simulator_id, new_simulation.simulation_id,
-                                   new_simulation.keep_logs_hours, new_simulation.log_level)
+    simulation_executor.deploy_simulation(simulation_inventory.get_simulation(simulation_id))
 
     return simulation_id
 

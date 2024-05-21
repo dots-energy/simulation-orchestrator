@@ -12,14 +12,16 @@
 #  Manager:
 #      TNO
 
+from threading import Lock
 import typing
 
 from pydantic import BaseModel, Field
 from datetime import datetime, timedelta
 from typing import Sequence
 
+from simulation_orchestrator.models.model_inventory import ModelInventory
 from simulation_orchestrator.models.simulation_inventory import Simulation
-
+from simulation_orchestrator.types import SimulationId, SimulatorId
 
 class CalculationService(BaseModel):
     esdl_type: str = Field(default='PVInstallation', description="The exactname of the ESDL type")
@@ -43,6 +45,71 @@ class SimulationPost(BaseModel):
     log_level: str = Field(default='info', description="Options: 'debug', 'info', 'warning', 'error'")
     calculation_services: list[CalculationService]
     esdl_base64string: str = '<esdl_file_base64encoded_string>'
+
+class Simulation:
+    simulator_id: SimulatorId
+    simulation_id: SimulationId
+    simulation_name: str
+
+    simulation_start_datetime: datetime
+    time_step_seconds: int
+    nr_of_time_steps: int
+
+    max_step_calc_time_minutes: float
+    keep_logs_hours: float
+    log_level: str
+
+    calculation_services: typing.List[CalculationService]
+    esdl_base64string: str
+
+    current_time_step_nr: int
+    calculation_start_datetime: datetime
+    calculation_end_datetime: typing.Optional[datetime]
+    current_step_calculation_start_datetime: typing.Optional[datetime]
+    modelparameters_start_datetime: typing.Optional[datetime]
+    model_inventory: ModelInventory
+    error_message: str
+
+    terminated: bool
+
+    lock: Lock
+
+    def __init__(
+            self,
+            simulator_id: SimulatorId,
+            simulation_name: str,
+            simulation_start_date: datetime,
+            time_step_seconds: int,
+            sim_nr_of_steps: int,
+            max_step_calc_time_minutes: float,
+            keep_logs_hours: float,
+            log_level: str,
+            calculation_services: typing.List[CalculationService],
+            esdl_base64string: str,
+    ):
+        self.simulator_id = simulator_id
+        self.simulation_name = simulation_name
+        self.simulation_start_datetime = simulation_start_date
+        self.time_step_seconds = time_step_seconds
+        self.nr_of_time_steps = sim_nr_of_steps
+
+        self.max_step_calc_time_minutes = max_step_calc_time_minutes
+        self.keep_logs_hours = keep_logs_hours
+        self.log_level = log_level
+
+        self.calculation_services = calculation_services
+        self.esdl_base64string = esdl_base64string
+
+        self.current_time_step_nr = 0
+        self.calculation_start_datetime = datetime.now()
+        self.calculation_end_datetime = None
+        self.current_step_calculation_start_datetime = None
+        self.modelparameters_start_datetime = None
+        self.model_inventory = ModelInventory()
+        self.error_message = ""
+        self.terminated = False
+
+        self.lock = Lock()
 
 
 class SimulationStatus(SimulationPost):
