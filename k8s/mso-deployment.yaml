@@ -19,7 +19,7 @@ spec:
       - name: ci-tno-dots
       containers:
       - name: mso # container name
-        image: dotsenergyframework/model-services-orchestrator:0.0.3
+        image: dotsenergyframework/model-services-orchestrator:0.0.4
         imagePullPolicy: Always
         env:
         - name: KUBERNETES_API_TOKEN

@@ -1,23 +1,38 @@
-apiVersion: apps/v1
-kind: Deployment
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   namespace: dots
+#   name: helics-example-charger
+#   labels:
+#     app: helics-example-charger # pod name
+# spec:
+#   replicas: 1
+#   selector:
+#     matchLabels:
+#       app: helics-example-charger
+#   template: # pod blueprint
+#     metadata:
+#       labels:
+#         app: helics-example-charger # pod name
+#     spec:
+#       imagePullSecrets:
+#       - name: ci-tno-dots
+#       containers:
+#       - name: helics-example-charger # container name
+#         image: dotsenergyframework/helics-example-charger:0.0.1
+#         imagePullPolicy: Always
+apiVersion: v1
+kind: Pod
 metadata:
   namespace: dots
-  name: helics-example-charger
+  name: helics-charger
   labels:
-    app: helics-example-charger # pod name
+    app: helics-charger # pod name
 spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: helics-example-charger
-  template: # pod blueprint
-    metadata:
-      labels:
-        app: helics-example-charger # pod name
-    spec:
-      imagePullSecrets:
-      - name: ci-tno-dots
-      containers:
-      - name: helics-example-charger # container name
-        image: dotsenergyframework/helics-example-charger:0.0.1
-        imagePullPolicy: Always
+  hostname: helics-charger
+  imagePullSecrets:
+  - name: ci-tno-dots
+  containers:
+  - name: helics-charger # container name
+    image: dotsenergyframework/helics-example-charger:0.0.1
+    imagePullPolicy: Always
