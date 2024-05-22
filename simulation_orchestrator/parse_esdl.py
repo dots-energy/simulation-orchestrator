@@ -19,11 +19,10 @@ from esdl import esdl, EnergySystem
 from esdl.esdl_handler import EnergySystemHandler
 from base64 import b64decode
 
-EsdlId = str
-
 from rest.schemas.simulation_schemas import CalculationService
-from simulation_orchestrator.models.model_inventory import ConnectedCalculationServcie, Model
-from simulation_orchestrator.types import ProgressState
+from simulation_orchestrator.dataclasses.dataclasses import CalculationServiceInfo, ConnectedCalculationServcie
+from simulation_orchestrator.models.model_inventory import Model
+from simulation_orchestrator.types import EsdlId, ProgressState
 
 
 def get_energy_system(esdl_base64string: str) -> EnergySystem:
@@ -51,8 +50,8 @@ def add_calc_services_from_ports(
         if isinstance(port, esdl.InPort):
             for connected_port in port.connectedTo:
                 connected_asset = connected_port.eContainer()
-                add_esdl_object(
-                    connected_input_esdl_objects, connected_asset, calculation_services
+                add_connected_esdl_object(
+                    connected_input_esdl_objects, calculation_services, connected_asset
                 )
 
 def add_calc_services_from_non_connected_objects(
@@ -62,10 +61,10 @@ def add_calc_services_from_non_connected_objects(
 ):
     for esdl_obj in energy_system.eAllContents():
         if not isinstance(esdl_obj, esdl.EnergyAsset) and hasattr(esdl_obj, "id"):
-            add_esdl_object(
-                connected_input_esdl_objects, esdl_obj, calculation_services
+            add_connected_esdl_object(
+                connected_input_esdl_objects, calculation_services, esdl_obj
             )
-    add_esdl_object(connected_input_esdl_objects, energy_system, calculation_services)
+    add_connected_esdl_object(connected_input_esdl_objects, calculation_services, energy_system)
 
 def add_calc_services_from_all_objects(
     calculation_services: List[CalculationService],
@@ -74,8 +73,8 @@ def add_calc_services_from_all_objects(
 ):
     for esdl_obj in energy_system.eAllContents():
         if hasattr(esdl_obj, "id"):
-            add_esdl_object(
-                connected_input_esdl_objects, esdl_obj, calculation_services
+            add_connected_esdl_object(
+                connected_input_esdl_objects, calculation_services, esdl_obj
             )
 
 def get_connected_input_esdl_objects(
@@ -85,7 +84,7 @@ def get_connected_input_esdl_objects(
 ) -> List[ConnectedCalculationServcie]:
     model_esdl_obj = get_model_esdl_object(esdl_id, energy_system)
 
-    connected_input_esdl_objects: dict[str, List[EsdlId]] = {}
+    connected_input_esdl_objects: List[ConnectedCalculationServcie] = []
     if isinstance(model_esdl_obj, esdl.EnergyAsset):
         add_calc_services_from_ports(
             calculation_services, connected_input_esdl_objects, model_esdl_obj
@@ -99,12 +98,34 @@ def get_connected_input_esdl_objects(
         )
     return connected_input_esdl_objects
 
+def extract_calculation_service(calculation_services: List[CalculationService], esdl_obj) -> CalculationService:
+    esdl_obj_type_name = type(esdl_obj).__name__
+    calc_service = next(
+        (
+            calc_service
+            for calc_service in calculation_services
+            if calc_service.esdl_type == esdl_obj_type_name
+        ),
+        None,
+    )
+    
+    return calc_service
+
+def add_esdl_object(service_info_dict: dict[str, CalculationServiceInfo], calculation_services: List[CalculationService], esdl_obj: esdl):
+    calc_service = extract_calculation_service(calculation_services, esdl_obj)
+
+    if calc_service:
+        if calc_service.calc_service_name in service_info_dict:
+            service_info_dict[calc_service.calc_service_name].esdl_ids.append(esdl_obj.id)
+        else:
+            service_info_dict[calc_service.calc_service_name] = CalculationServiceInfo(calc_service.calc_service_name, calc_service.service_image_url, calc_service.nr_of_models, [esdl_obj.id])
+
 def get_model_list(calculation_services: List[CalculationService], esdl_base64string: str) -> List[Model]:
     try:
         energy_system = get_energy_system(esdl_base64string)
 
         # gather all esdl objects per calculation service
-        service_info_dict: dict = {}
+        service_info_dict: dict[str, CalculationServiceInfo] = {}
         # Iterate over all contents of an EnergySystem
         for esdl_obj in energy_system.eAllContents():
             add_esdl_object(service_info_dict, calculation_services, esdl_obj)
@@ -123,41 +144,33 @@ def get_model_list(calculation_services: List[CalculationService], esdl_base64st
     return model_list
 
 
-def add_esdl_object(service_info_dict: List[ConnectedCalculationServcie], calculation_services: List[CalculationService], esdl_obj: esdl):
-    calc_service = next(
-        (
-            calc_service
-            for calc_service in calculation_services
-            if calc_service.esdl_type == type(esdl_obj).__name__
-        ),
-        None,
-    )
+def add_connected_esdl_object(service_info_dict: List[ConnectedCalculationServcie], calculation_services: List[CalculationService], esdl_obj: esdl):
+    calc_service = extract_calculation_service(calculation_services, esdl_obj)
 
     if calc_service:
-        connected_calculation_service = next(connected_calc_service for connected_calc_service in service_info_dict if connected_calc_service.service_name == calc_service.calc_service_name)
+        connected_calculation_service = next((connected_calc_service for connected_calc_service in service_info_dict if connected_calc_service.service_name == calc_service.calc_service_name), None)
         if connected_calculation_service:
             connected_calculation_service.connected_services.append(esdl_obj.id)
         else:
             service_info_dict.append(ConnectedCalculationServcie(calc_service.calc_service_name, [esdl_obj.id]))
 
-
-def add_service_models(service_info, model_list, calculation_services : List[CalculationService], energy_system : EnergySystem):
-    nr_of_esdl_objects = len(service_info['esdl_ids'])
-    if service_info['nr_of_models'] == 0:
+def add_service_models(service_info : CalculationServiceInfo, model_list, calculation_services : List[CalculationService], energy_system : EnergySystem):
+    nr_of_esdl_objects = len(service_info.esdl_ids)
+    if service_info.nr_of_models == 0:
         nr_of_objects_in_model = 1
     else:
-        nr_of_objects_in_model = math.ceil(nr_of_esdl_objects / service_info['nr_of_models'])
+        nr_of_objects_in_model = math.ceil(nr_of_esdl_objects / service_info.nr_of_models)
 
     i_model = 0
     while i_model * nr_of_objects_in_model < nr_of_esdl_objects:
         i_model += 1
-        model_id = f"{service_info['calc_service_name'].replace('_', '-')}-{i_model}"
+        model_id = f"{service_info.calc_service_name.replace('_', '-')}-{i_model}"
 
         esdl_ids = []
         for i_esdl_id in range((i_model - 1) * nr_of_objects_in_model, i_model * nr_of_objects_in_model):
-            if i_esdl_id < len(service_info['esdl_ids']):
-                esdl_ids.append(service_info['esdl_ids'][i_esdl_id])
-        
+            if i_esdl_id < len(service_info.esdl_ids):
+                esdl_ids.append(service_info.esdl_ids[i_esdl_id])
+
         calculation_services_dict : dict[EsdlId, List[ConnectedCalculationServcie]] = {}
         for esdl_id in esdl_ids:
             calculation_services_dict[esdl_id] = get_connected_input_esdl_objects(esdl_id, calculation_services, energy_system)
@@ -166,8 +179,8 @@ def add_service_models(service_info, model_list, calculation_services : List[Cal
                 model_id=model_id,
                 esdl_ids=esdl_ids,
                 connected_services=calculation_services_dict,
-                calc_service_name=service_info['calc_service_name'],
-                service_image_url=service_info['service_image_url'],
+                calc_service_name=service_info.calc_service_name,
+                service_image_url=service_info.service_image_url,
                 current_state=ProgressState.REGISTERED,
             )
         )

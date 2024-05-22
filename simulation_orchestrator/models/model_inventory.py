@@ -14,17 +14,12 @@
 
 import typing
 
+from simulation_orchestrator.dataclasses.dataclasses import ConnectedCalculationServcie
 from simulation_orchestrator.io.log import LOGGER
-from simulation_orchestrator.parse_esdl import EsdlId
-from simulation_orchestrator.types import SimulationId, ModelId, ProgressState
 
-from dataclasses import dataclass
+from simulation_orchestrator.types import EsdlId, SimulationId, ModelId, ProgressState
+
 from typing import List
-
-@dataclass
-class ConnectedCalculationServcie:
-    service_name : str
-    connected_services : List[EsdlId]
 
 class Model:
     model_id: ModelId
@@ -38,11 +33,13 @@ class Model:
     def __init__(self,
                  model_id: ModelId,
                  esdl_ids: typing.List[str],
+                 connected_services: dict[EsdlId, List[ConnectedCalculationServcie]],
                  calc_service_name: str,
                  service_image_url: str,
                  current_state: ProgressState):
         self.model_id = model_id
         self.esdl_ids = esdl_ids
+        self.connected_services = connected_services
         self.calc_service_name = calc_service_name
         self.service_image_url = service_image_url
         self.current_state = current_state

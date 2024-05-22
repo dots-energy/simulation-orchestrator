@@ -52,6 +52,7 @@ class EnvConfig:
                    ('KUBERNETES_PORT', '6443', int, False),
                    ('KUBERNETES_API_TOKEN', None, str, True),
                    ('KUBERNETES_PULL_IMAGE_SECRET_NAME', None, str, False),
+                   ('MQTT_HOST', 'localhost', str, False),
                    ('MQTT_PORT', '1883', int, False),
                    ('MQTT_QOS', '0', int, False),
                    ('MQTT_USERNAME', '', str, False),
@@ -111,7 +112,11 @@ def start():
     configuration.verify_ssl = False
     configuration.retries = 3
     kubernetes_client_api = kubernetes.client.ApiClient(configuration)
-    generic_model_env_var = {(key, value) for key, value in config.items() if key.startswith("INFLUXDB")}
+    generic_model_env_var: dict = {}
+    for key, value in config.items():
+        if key.startswith("INFLUXDB"):
+            generic_model_env_var[key] = value
+
     actions.simulation_executor = SimulationExecutor(K8sApi(kubernetes_client_api, config['KUBERNETES_PULL_IMAGE_SECRET_NAME'].strip(), generic_model_env_var))
 
     rest.oauth.OAuthUtilities.SECRET_KEY = config['SECRET_KEY']

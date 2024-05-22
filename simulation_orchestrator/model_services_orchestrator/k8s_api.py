@@ -12,6 +12,7 @@
 #  Manager:
 #      TNO
 
+import dataclasses
 from datetime import datetime, timedelta
 import typing
 import time
@@ -28,6 +29,12 @@ import json
 HELICS_BROKER_POD_NAME = 'helics-broker'
 HELICS_BROKER_IMAGE_URL = 'dotsenergyframework/helics-broker:0.0.1'
 HELICS_BROKER_PORT = 30000
+
+class EnhancedJSONEncoder(json.JSONEncoder):
+        def default(self, o):
+            if dataclasses.is_dataclass(o):
+                return dataclasses.asdict(o)
+            return super().default(o)
 
 class PodStatus:
     simulator_id: SimulatorId
@@ -122,7 +129,7 @@ class K8sApi:
         return broker_ip
 
     def deploy_model(self, simulator_id: SimulatorId, simulation_id: SimulationId, model: Model,
-                           keep_logs_hours: float) -> bool:
+                           keep_logs_hours: float, broker_ip) -> bool:
         pod_name = self.model_to_pod_name(simulator_id, simulation_id, model.model_id)
         LOGGER.info(f'Deploying pod {pod_name}')
         labels={
@@ -133,8 +140,9 @@ class K8sApi:
         }
         env_vars = self.generic_model_env_var
         env_vars["esdl_ids"] = ';'.join(model.esdl_ids)
-        env_vars["connected_services"] = json.dumps(model.connected_services)
-        return self.deploy_new_pod(pod_name, model.container_url,[kubernetes.client.V1EnvVar(name, value) for name, value in model.env_vars.items()], labels)
+        env_vars["connected_services"] = json.dumps(model.connected_services, cls=EnhancedJSONEncoder)
+        env_vars["broker_ip"] = broker_ip
+        return self.deploy_new_pod(pod_name, model.service_image_url,[kubernetes.client.V1EnvVar(name, value) for name, value in env_vars.items()], labels)
 
     def delete_model(self, simulator_id: SimulatorId, simulation_id: SimulationId, model_id: ModelId,
                            delete_by: datetime) -> bool:

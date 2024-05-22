@@ -15,13 +15,12 @@
 import typing
 import uuid
 from threading import Lock
-import threading
 from datetime import datetime, timedelta
 
-from rest.schemas.simulation_schemas import CalculationService
+from rest.schemas.simulation_schemas import Simulation
 from simulation_orchestrator.io.log import LOGGER
-from simulation_orchestrator.models.model_inventory import ModelInventory, Model
-from simulation_orchestrator.types import SimulationId, SimulatorId, ModelId, ProgressState, progress_state_description
+from simulation_orchestrator.models.model_inventory import Model
+from simulation_orchestrator.types import SimulationId, ModelId, ProgressState, progress_state_description
 
 class SimulationInventory:
     activeSimulations: typing.Dict[SimulationId, Simulation]

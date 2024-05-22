@@ -20,7 +20,6 @@ from datetime import datetime, timedelta
 from typing import Sequence
 
 from simulation_orchestrator.models.model_inventory import ModelInventory
-from simulation_orchestrator.models.simulation_inventory import Simulation
 from simulation_orchestrator.types import SimulationId, SimulatorId
 
 class CalculationService(BaseModel):
