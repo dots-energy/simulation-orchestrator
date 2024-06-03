@@ -8,9 +8,9 @@ certifi==2022.9.24
     # via requests
 charset-normalizer==2.1.1
     # via requests
-click==7.1.2
+click==8.1.7
     # via uvicorn
-fastapi==0.105.0
+fastapi==0.111.0
     # via -r ./requirements.in
 future-fstrings==1.2.0
     # via pyecore
@@ -59,7 +59,7 @@ six==1.16.0
     #   influxdb
     #   python-dateutil
     #   python-multipart
-starlette==0.27.0
+starlette==0.37.2
     # via fastapi
 typing-extensions==4.8.0
     # via pydantic
@@ -69,11 +69,11 @@ typing-utils==0.1.0
     #   overrides
 urllib3==1.26.12
     # via requests
-uvicorn==0.11.3
+uvicorn==0.30.1
     # via -r ./requirements.in
 websockets==8.1
     # via uvicorn
-python-multipart==0.0.6
+python-multipart==0.0.7
 
 python-jose==3.3.0
 
@@ -82,3 +82,5 @@ passlib==1.7.4
 bcrypt==4.1.1
 
 kubernetes==19.*
+
+helics==3.4.0

@@ -6,7 +6,7 @@ from simulation_orchestrator.types import EsdlId
 
 @dataclass
 class ConnectedCalculationServcie:
-    service_name : str
+    esdl_type : str
     connected_services : List[EsdlId]
 
 @dataclass

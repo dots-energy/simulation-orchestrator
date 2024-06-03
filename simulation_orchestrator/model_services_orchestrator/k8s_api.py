@@ -78,7 +78,7 @@ class K8sApi:
         k8s_container = kubernetes.client.V1Container(image=container_url,
                                                       env=env_vars,
                                                       name=pod_name,
-                                                      image_pull_policy='IfNotPresent')
+                                                      image_pull_policy='Always')
         if self.pull_image_secret_name:
             LOGGER.debug(f'Using pull image secret name {self.pull_image_secret_name}')
             image_pull_secrets = [kubernetes.client.V1LocalObjectReference(name=self.pull_image_secret_name)]
@@ -111,11 +111,12 @@ class K8sApi:
     
     def await_pod_to_running_state(self, pod_name):
         broker_ip = None
-        LOGGER.info("Waiting for broker to be in running state")
+        LOGGER.info(f"Waiting for {pod_name} to be in running state")
         while broker_ip == None:
             api_response = self.k8s_core_api.list_namespaced_pod(SIMULATION_NAMESPACE, field_selector=f'metadata.name={pod_name}')
+            LOGGER.info(api_response)
             for pod in api_response.items:
-                if pod.status.container_statuses:
+                if pod.status.container_statuses and pod.metadata.name == pod_name:
                     container_k8s_status = pod.status.container_statuses[0].state
                     if container_k8s_status.running:
                         broker_ip = pod.status.pod_ip
@@ -124,7 +125,7 @@ class K8sApi:
 
     def deploy_helics_broker(self, amount_of_federates, simulation_id, simulator_id):
         broker_pod_name = f'{HELICS_BROKER_POD_NAME}-{simulation_id}'
-        self.deploy_new_pod(broker_pod_name, HELICS_BROKER_IMAGE_URL,[kubernetes.client.V1EnvVar("AMOUNT_OF_FEDERATES", str(amount_of_federates)), kubernetes.client.V1EnvVar("HELICS_BROKER_PORT", str(HELICS_BROKER_PORT))], {'simulation_id': simulation_id, 'simulator_id': simulator_id, 'model_id': broker_pod_name})
+        self.deploy_new_pod(broker_pod_name, HELICS_BROKER_IMAGE_URL,[kubernetes.client.V1EnvVar("AMOUNT_OF_FEDERATES", str(amount_of_federates)), kubernetes.client.V1EnvVar("HELICS_BROKER_PORT", str(HELICS_BROKER_PORT)), kubernetes.client.V1EnvVar("AMOUNT_OF_ESDL_MESSAGE_FEDERATES", str(amount_of_federates))], {'simulation_id': simulation_id, 'simulator_id': simulator_id, 'model_id': broker_pod_name})
         broker_ip = self.await_pod_to_running_state(broker_pod_name)
         return broker_ip
 
@@ -142,6 +143,7 @@ class K8sApi:
         env_vars["esdl_ids"] = ';'.join(model.esdl_ids)
         env_vars["connected_services"] = json.dumps(model.connected_services, cls=EnhancedJSONEncoder)
         env_vars["broker_ip"] = broker_ip
+        env_vars["model_id"] = model.model_id
         return self.deploy_new_pod(pod_name, model.service_image_url,[kubernetes.client.V1EnvVar(name, value) for name, value in env_vars.items()], labels)
 
     def delete_model(self, simulator_id: SimulatorId, simulation_id: SimulationId, model_id: ModelId,

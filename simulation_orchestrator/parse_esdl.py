@@ -148,11 +148,11 @@ def add_connected_esdl_object(service_info_dict: List[ConnectedCalculationServci
     calc_service = extract_calculation_service(calculation_services, esdl_obj)
 
     if calc_service:
-        connected_calculation_service = next((connected_calc_service for connected_calc_service in service_info_dict if connected_calc_service.service_name == calc_service.calc_service_name), None)
+        connected_calculation_service = next((connected_calc_service for connected_calc_service in service_info_dict if connected_calc_service.esdl_type == calc_service.esdl_type), None)
         if connected_calculation_service:
             connected_calculation_service.connected_services.append(esdl_obj.id)
         else:
-            service_info_dict.append(ConnectedCalculationServcie(calc_service.calc_service_name, [esdl_obj.id]))
+            service_info_dict.append(ConnectedCalculationServcie(calc_service.esdl_type, [esdl_obj.id]))
 
 def add_service_models(service_info : CalculationServiceInfo, model_list, calculation_services : List[CalculationService], energy_system : EnergySystem):
     nr_of_esdl_objects = len(service_info.esdl_ids)
