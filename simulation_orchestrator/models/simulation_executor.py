@@ -22,22 +22,25 @@ class SimulationExecutor:
         h.helicsFederateInfoSetBroker(federate_info, broker_ip)
         h.helicsFederateInfoSetBrokerPort(federate_info, HELICS_BROKER_PORT)
         h.helicsFederateInfoSetTimeProperty(federate_info, h.HelicsProperty.TIME_PERIOD, 60)
-        h.helicsFederateInfoSetFlagOption(federate_info, h.HelicsFederateFlag.UNINTERRUPTIBLE, True)
-        h.helicsFederateInfoSetFlagOption(federate_info, h.HelicsFederateFlag.WAIT_FOR_CURRENT_TIME_UPDATE, True)
+        h.helicsFederateInfoSetFlagOption(federate_info, h.HelicsFederateFlag.UNINTERRUPTIBLE, False)
+        h.helicsFederateInfoSetFlagOption(federate_info, h.HelicsFederateFlag.WAIT_FOR_CURRENT_TIME_UPDATE, False)
         h.helicsFederateInfoSetFlagOption(federate_info, h.HelicsFlag.TERMINATE_ON_ERROR, False)
         h.helicsFederateInfoSetCoreType(federate_info, h.HelicsCoreType.ZMQ)
         h.helicsFederateInfoSetIntegerProperty(federate_info, h.HelicsProperty.INT_LOG_LEVEL, h.HelicsLogLevel.DEBUG)
         LOGGER.info("Creating federate to send esdl file: ")
         message_federate = h.helicsCreateMessageFederate("esdl_broker", federate_info)
-        message_enpoint = h.helicsFederateRegisterEndpoint(message_federate, "simulation-orchestrator")
-        message = message_enpoint.create_message()
-        message.data = simulation.esdl_base64string
-        message_federate.enter_executing_mode(message_federate)
-        h.helicsFederateRequestTime(message_federate, 1)
+        message_enpoint = h.helicsFederateRegisterEndpoint(message_federate, "simulation-orchestrator")        
+        h.helicsFederateEnterExecutingMode(message_federate)
+        message = h.helicsEndpointCreateMessage(message_enpoint)
+        h.helicsMessageSetString(message, simulation.esdl_base64string)
+
+        request_time = int(h.helicsFederateGetTimeProperty(message_federate, 60))
+        h.helicsFederateRequestTime(message_federate, request_time)
         for model in models:
             endpoint = f'{model.model_id}/esdl'
+            h.helicsMessageSetDestination(message, endpoint)
             LOGGER.info(f"Sending esdl file to: {endpoint}")
-            message_enpoint.send_data(message, endpoint)
+            h.helicsEndpointSendMessage(message_enpoint, message)
         
         h.helicsFederateRequestTime(message_federate, h.HELICS_TIME_MAXTIME)
         h.helicsFederateDisconnect(message_federate)
