@@ -25,7 +25,6 @@ class Model:
     model_id: ModelId
     model_name: str
     esdl_ids: typing.List[str]
-    connected_services : dict[EsdlId, List[ConnectedCalculationServcie]]
     calc_service_name: str
     service_image_url: str
     current_state: ProgressState
@@ -33,13 +32,11 @@ class Model:
     def __init__(self,
                  model_id: ModelId,
                  esdl_ids: typing.List[str],
-                 connected_services: dict[EsdlId, List[ConnectedCalculationServcie]],
                  calc_service_name: str,
                  service_image_url: str,
                  current_state: ProgressState):
         self.model_id = model_id
         self.esdl_ids = esdl_ids
-        self.connected_services = connected_services
         self.calc_service_name = calc_service_name
         self.service_image_url = service_image_url
         self.current_state = current_state

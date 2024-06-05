@@ -1,9 +1,19 @@
 
+import json
 from simulation_orchestrator.model_services_orchestrator.k8s_api import K8sApi, HELICS_BROKER_PORT
-from rest.schemas.simulation_schemas import Simulation
+from rest.schemas.simulation_schemas import CalculationService, Simulation
 from simulation_orchestrator.io.log import LOGGER
 
 import helics as h
+
+class CalculationServiceJSONEncoder(json.JSONEncoder):
+        def default(self, o):
+            if isinstance(o, CalculationService):
+                return [
+                     {"calc_service_name" : o.calc_service_name},
+                     {"esdl_type" : o.esdl_type}
+                ]
+            return super().default(o)
 
 class SimulationExecutor:
 
@@ -31,17 +41,19 @@ class SimulationExecutor:
         message_federate = h.helicsCreateMessageFederate("esdl_broker", federate_info)
         message_enpoint = h.helicsFederateRegisterEndpoint(message_federate, "simulation-orchestrator")        
         h.helicsFederateEnterExecutingMode(message_federate)
-        message = h.helicsEndpointCreateMessage(message_enpoint)
-        h.helicsMessageSetString(message, simulation.esdl_base64string)
+        esdl_message = h.helicsEndpointCreateMessage(message_enpoint)
+        h.helicsMessageSetString(esdl_message, simulation.esdl_base64string)
+        calculation_services_message = h.helicsEndpointCreateMessage(message_enpoint)
+        h.helicsMessageSetString(calculation_services_message, json.dumps(simulation.calculation_services, cls=CalculationServiceJSONEncoder))
 
-        request_time = int(h.helicsFederateGetTimeProperty(message_federate, 60))
+        request_time = int(h.helicsFederateGetTimeProperty(message_federate, h.HelicsProperty.TIME_PERIOD))
         h.helicsFederateRequestTime(message_federate, request_time)
         for model in models:
             endpoint = f'{model.model_id}/esdl'
-            h.helicsMessageSetDestination(message, endpoint)
+            h.helicsMessageSetDestination(esdl_message, endpoint)
             LOGGER.info(f"Sending esdl file to: {endpoint}")
-            h.helicsEndpointSendMessage(message_enpoint, message)
-        
+            h.helicsEndpointSendMessage(message_enpoint, esdl_message)
+
         h.helicsFederateRequestTime(message_federate, h.HELICS_TIME_MAXTIME)
         h.helicsFederateDisconnect(message_federate)
         h.helicsFederateDestroy(message_federate)

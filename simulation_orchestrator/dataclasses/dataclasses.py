@@ -3,12 +3,6 @@ from typing import List
 
 from simulation_orchestrator.types import EsdlId
 
-
-@dataclass
-class ConnectedCalculationServcie:
-    esdl_type : str
-    connected_services : List[EsdlId]
-
 @dataclass
 class CalculationServiceInfo:
     calc_service_name : str
