@@ -20,7 +20,7 @@ from esdl.esdl_handler import EnergySystemHandler
 from base64 import b64decode
 
 from rest.schemas.simulation_schemas import CalculationService
-from simulation_orchestrator.dataclasses.dataclasses import CalculationServiceInfo, ConnectedCalculationServcie
+from simulation_orchestrator.dataclasses.dataclasses import CalculationServiceInfo
 from simulation_orchestrator.models.model_inventory import Model
 from simulation_orchestrator.types import EsdlId, ProgressState
 

@@ -33,23 +33,11 @@ def create_new_simulation(simulation_post : SimulationPost) -> Simulation:
 
     simulator_id = 'SO'
 
-    calculation_services = [
-        {
-            "esdl_type": calculation_service.esdl_type,
-            "calc_service_name": calculation_service.calc_service_name,
-            "service_image_url": calculation_service.service_image_url,
-            "nr_of_models": calculation_service.nr_of_models,
-        }
-        for calculation_service in simulation_post.calculation_services
-    ]
-
     new_simulation = Simulation(
         simulator_id=simulator_id,
         simulation_name=simulation_post.name,
         simulation_start_date=simulation_post.start_date,
-        time_step_seconds=simulation_post.time_step_seconds,
-        max_step_calc_time_minutes=simulation_post.max_step_calc_time_minutes,
-        sim_nr_of_steps=simulation_post.nr_of_time_steps,
+        simulation_duration_in_seconds=simulation_post.simulation_duration_in_seconds,
         keep_logs_hours=simulation_post.keep_logs_hours,
         log_level=simulation_post.log_level,
         calculation_services=simulation_post.calculation_services,

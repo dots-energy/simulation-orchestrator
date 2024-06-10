@@ -117,12 +117,13 @@ def start():
         if key.startswith("INFLUXDB"):
             generic_model_env_var[key] = value
 
-    actions.simulation_executor = SimulationExecutor(K8sApi(kubernetes_client_api, config['KUBERNETES_PULL_IMAGE_SECRET_NAME'].strip(), generic_model_env_var))
 
     rest.oauth.OAuthUtilities.SECRET_KEY = config['SECRET_KEY']
     rest.oauth.OAuthUtilities.users["DotsUser"]["hashed_password"] = rest.oauth.OAuthUtilities.get_password_hash(config['OAUTH_PASSWORD'])
 
     actions.simulation_inventory = simulation_inventory
+    actions.simulation_executor = SimulationExecutor(K8sApi(kubernetes_client_api, config['KUBERNETES_PULL_IMAGE_SECRET_NAME'].strip(), generic_model_env_var), simulation_inventory)
+
     actions.mqtt_client = mqtt_client
 
     t = threading.Thread(target=mqtt_client.start, name='mqtt client')

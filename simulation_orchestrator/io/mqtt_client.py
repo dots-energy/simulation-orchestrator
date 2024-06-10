@@ -228,8 +228,7 @@ class MqttClient:
             parameters_dict=json.dumps({
                     'simulation_name': simulation.simulation_name,
                     'start_timestamp': simulation.simulation_start_datetime.timestamp(),
-                    'time_step_seconds': simulation.time_step_seconds,
-                    'nr_of_time_steps': simulation.nr_of_time_steps,
+                    'nr_of_time_steps': simulation.simulation_duration_in_seconds,
                     'calculation_services': simulation.calculation_services,
                     'esdl_base64string': simulation.esdl_base64string,
                     'esdl_ids': model.esdl_ids,

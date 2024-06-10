@@ -30,16 +30,12 @@ class CalculationService(BaseModel):
     service_image_url: str = Field(default='<pvinstallation_service_docker_image_url>',
                                    description="The URL of the docker image file")
     nr_of_models: int = Field(default=1, description="'0' will create a model (container) per ESDL object")
-
+    amount_of_calculations: int = Field(default=1, description="Amount of calculations executed by the calculation service")
 
 class SimulationPost(BaseModel):
     name: str = 'simulation name'
     start_date: datetime = '2023-01-25 00:00:00'
-    time_step_seconds: int = '3600'
-    nr_of_time_steps: int = '24'
-    max_step_calc_time_minutes: float = Field(default=10,
-                                              description="If a time step takes longer than this amount of minutes,"
-                                                          " the simulation will be aborted")
+    simulation_duration_in_seconds: int = '86400'
     keep_logs_hours: float = '24.0'
     log_level: str = Field(default='info', description="Options: 'debug', 'info', 'warning', 'error'")
     calculation_services: list[CalculationService]
@@ -51,10 +47,8 @@ class Simulation:
     simulation_name: str
 
     simulation_start_datetime: datetime
-    time_step_seconds: int
-    nr_of_time_steps: int
+    simulation_duration_in_seconds: int
 
-    max_step_calc_time_minutes: float
     keep_logs_hours: float
     log_level: str
 
@@ -78,9 +72,7 @@ class Simulation:
             simulator_id: SimulatorId,
             simulation_name: str,
             simulation_start_date: datetime,
-            time_step_seconds: int,
-            sim_nr_of_steps: int,
-            max_step_calc_time_minutes: float,
+            simulation_duration_in_seconds: int,
             keep_logs_hours: float,
             log_level: str,
             calculation_services: typing.List[CalculationService],
@@ -89,10 +81,7 @@ class Simulation:
         self.simulator_id = simulator_id
         self.simulation_name = simulation_name
         self.simulation_start_datetime = simulation_start_date
-        self.time_step_seconds = time_step_seconds
-        self.nr_of_time_steps = sim_nr_of_steps
-
-        self.max_step_calc_time_minutes = max_step_calc_time_minutes
+        self.simulation_duration_in_seconds = simulation_duration_in_seconds
         self.keep_logs_hours = keep_logs_hours
         self.log_level = log_level
 
@@ -128,8 +117,7 @@ class SimulationStatus(SimulationPost):
         return cls(
             name=simulation.simulation_name,
             start_date=simulation.simulation_start_datetime,
-            time_step_seconds=simulation.time_step_seconds,
-            nr_of_time_steps=simulation.nr_of_time_steps,
+            nr_of_time_steps=simulation.simulation_duration_in_seconds,
             calculation_services=simulation.calculation_services,
             esdl_base64string=simulation.esdl_base64string,
             log_level=simulation.log_level,

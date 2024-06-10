@@ -1,33 +1,23 @@
+import asyncio
 
-import json
+from typing import List
 from simulation_orchestrator.model_services_orchestrator.k8s_api import K8sApi, HELICS_BROKER_PORT
-from rest.schemas.simulation_schemas import CalculationService, Simulation
+from rest.schemas.simulation_schemas import Simulation
 from simulation_orchestrator.io.log import LOGGER
 
 import helics as h
 
-class CalculationServiceJSONEncoder(json.JSONEncoder):
-        def default(self, o):
-            if isinstance(o, CalculationService):
-                return [
-                     {"calc_service_name" : o.calc_service_name},
-                     {"esdl_type" : o.esdl_type}
-                ]
-            return super().default(o)
+from simulation_orchestrator.models.model_inventory import Model
+from simulation_orchestrator.models.simulation_inventory import SimulationInventory
+from simulation_orchestrator.types import ProgressState
 
 class SimulationExecutor:
 
-    def __init__(self, k8s_api : K8sApi) -> None:
+    def __init__(self, k8s_api : K8sApi, simulation_inventory : SimulationInventory) -> None:
         self.k8s_api = k8s_api
+        self.simulation_inventory = simulation_inventory
 
-    def deploy_simulation(self, simulation : Simulation):
-        amount_of_helics_federates = sum([calculation_service.nr_of_models for calculation_service in simulation.calculation_services])
-        models = simulation.model_inventory.get_models()
-        broker_ip = self.k8s_api.deploy_helics_broker(amount_of_helics_federates, simulation.simulation_id, simulation.simulator_id)
-        for model in models:
-            self.k8s_api.deploy_model(simulation.simulator_id, simulation.simulation_id, model, simulation.keep_logs_hours, broker_ip)
-            self.k8s_api.await_pod_to_running_state(self.k8s_api.model_to_pod_name(simulation.simulator_id, simulation.simulation_id, model.model_id))
-
+    def _send_esdl_file(self, simulation : Simulation, models : List[Model], broker_ip):
         federate_info = h.helicsCreateFederateInfo()
         h.helicsFederateInfoSetBroker(federate_info, broker_ip)
         h.helicsFederateInfoSetBrokerPort(federate_info, HELICS_BROKER_PORT)
@@ -43,8 +33,6 @@ class SimulationExecutor:
         h.helicsFederateEnterExecutingMode(message_federate)
         esdl_message = h.helicsEndpointCreateMessage(message_enpoint)
         h.helicsMessageSetString(esdl_message, simulation.esdl_base64string)
-        calculation_services_message = h.helicsEndpointCreateMessage(message_enpoint)
-        h.helicsMessageSetString(calculation_services_message, json.dumps(simulation.calculation_services, cls=CalculationServiceJSONEncoder))
 
         request_time = int(h.helicsFederateGetTimeProperty(message_federate, h.HelicsProperty.TIME_PERIOD))
         h.helicsFederateRequestTime(message_federate, request_time)
@@ -58,4 +46,17 @@ class SimulationExecutor:
         h.helicsFederateDisconnect(message_federate)
         h.helicsFederateDestroy(message_federate)
 
+    async def _deploy_simulation_async(self, simulation : Simulation):
+        amount_of_helics_federates = sum([calculation_service.nr_of_models for calculation_service in simulation.calculation_services])
+        models = simulation.model_inventory.get_models()
+        broker_ip = self.k8s_api.deploy_helics_broker(amount_of_helics_federates, simulation.simulation_id, simulation.simulator_id)
+        for model in models:
+            calculation_service_names = [calculation_service.esdl_type for calculation_service in simulation.calculation_services]
+            self.k8s_api.deploy_model(simulation, model, broker_ip, calculation_service_names)
+            self.k8s_api.await_pod_to_running_state(self.k8s_api.model_to_pod_name(simulation.simulator_id, simulation.simulation_id, model.model_id))
 
+        self._send_esdl_file(simulation, models, broker_ip)
+        self.simulation_inventory.set_state_for_all_models(simulation.simulation_id, ProgressState.DEPLOYED)
+
+    def deploy_simulation(self, simulation : Simulation):
+        asyncio.run(self._deploy_simulation_async(simulation))

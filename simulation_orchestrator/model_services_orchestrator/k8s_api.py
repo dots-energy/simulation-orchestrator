@@ -18,6 +18,7 @@ import time
 
 import kubernetes.client
 
+from rest.schemas.simulation_schemas import Simulation
 from simulation_orchestrator.model_services_orchestrator.constants import SIMULATION_NAMESPACE
 from simulation_orchestrator.io.log import LOGGER
 from simulation_orchestrator.model_services_orchestrator.types import ModelState
@@ -103,18 +104,23 @@ class K8sApi:
         return succeeded
     
     def await_pod_to_running_state(self, pod_name):
-        broker_ip = None
+        pod_ip = None
         LOGGER.info(f"Waiting for {pod_name} to be in running state")
-        while broker_ip == None:
+        max_iterations = 300
+        iteration = 0
+        while pod_ip == None and iteration < max_iterations:
             api_response = self.k8s_core_api.list_namespaced_pod(SIMULATION_NAMESPACE, field_selector=f'metadata.name={pod_name}')
-            LOGGER.info(api_response)
             for pod in api_response.items:
                 if pod.status.container_statuses and pod.metadata.name == pod_name:
                     container_k8s_status = pod.status.container_statuses[0].state
                     if container_k8s_status.running:
-                        broker_ip = pod.status.pod_ip
+                        pod_ip = pod.status.pod_ip
+            iteration += 1
             time.sleep(1)
-        return broker_ip
+
+        if iteration == max_iterations:
+            raise ConnectionError("Took to long to put pod into running state")
+        return pod_ip
 
     def deploy_helics_broker(self, amount_of_federates, simulation_id, simulator_id):
         broker_pod_name = f'{HELICS_BROKER_POD_NAME}-{simulation_id}'
@@ -122,20 +128,23 @@ class K8sApi:
         broker_ip = self.await_pod_to_running_state(broker_pod_name)
         return broker_ip
 
-    def deploy_model(self, simulator_id: SimulatorId, simulation_id: SimulationId, model: Model,
-                           keep_logs_hours: float, broker_ip) -> bool:
-        pod_name = self.model_to_pod_name(simulator_id, simulation_id, model.model_id)
+    def deploy_model(self, simulation : Simulation, model: Model, broker_ip: str, esdl_types_calculation_services : typing.List[str]) -> bool:
+        pod_name = self.model_to_pod_name(simulation.simulator_id, simulation.simulation_id, model.model_id)
         LOGGER.info(f'Deploying pod {pod_name}')
         labels={
-            'simulator_id': simulator_id,
-            'simulation_id': simulation_id,
+            'simulator_id': simulation.simulator_id,
+            'simulation_id': simulation.simulation_id,
             'model_id': model.model_id,
-            'keep_logs_hours': str(keep_logs_hours),
+            'keep_logs_hours': str(simulation.keep_logs_hours),
         }
         env_vars = self.generic_model_env_var
         env_vars["esdl_ids"] = ';'.join(model.esdl_ids)
         env_vars["broker_ip"] = broker_ip
+        env_vars["simulation_id"] = simulation.simulation_id
         env_vars["model_id"] = model.model_id
+        env_vars["calculation_services"] = ';'.join(esdl_types_calculation_services)
+        env_vars["start_time"] = simulation.simulation_start_datetime
+        env_vars["simulation_duration_in_seconds"] = simulation.simulation_duration_in_seconds
         return self.deploy_new_pod(pod_name, model.service_image_url,[kubernetes.client.V1EnvVar(name, value) for name, value in env_vars.items()], labels)
 
     def delete_model(self, simulator_id: SimulatorId, simulation_id: SimulationId, model_id: ModelId,

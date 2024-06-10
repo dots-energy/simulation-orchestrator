@@ -9,7 +9,7 @@ class TestParse(unittest.TestCase):
 
         # Arrange
         with open("test/test.esdl", mode="r") as esdl_file:
-            encoded_base64_esdl = base64.b64encode(esdl_file.read().encode('utf-8'))
+            encoded_base64_esdl = base64.b64encode(esdl_file.read().encode('utf-8')).decode("utf-8")
         
         calculation_service_energy_system = CalculationService()
         calculation_service_energy_system.esdl_type = "EnergySystem"
