@@ -1,5 +1,3 @@
-import asyncio
-
 from typing import List
 from simulation_orchestrator.model_services_orchestrator.k8s_api import K8sApi, HELICS_BROKER_PORT
 from rest.schemas.simulation_schemas import Simulation
@@ -46,10 +44,11 @@ class SimulationExecutor:
         h.helicsFederateDisconnect(message_federate)
         h.helicsFederateDestroy(message_federate)
 
-    async def _deploy_simulation_async(self, simulation : Simulation):
-        amount_of_helics_federates = sum([calculation_service.nr_of_models for calculation_service in simulation.calculation_services])
+    def deploy_simulation(self, simulation : Simulation):
+        amount_of_helics_federates_esdl_message = sum([calculation_service.nr_of_models for calculation_service in simulation.calculation_services]) + 1 # SO is also a federate that is part of the esdl federation
+        amount_of_helics_federates = sum([calculation_service.nr_of_models * calculation_service.amount_of_calculations for calculation_service in simulation.calculation_services])
         models = simulation.model_inventory.get_models()
-        broker_ip = self.k8s_api.deploy_helics_broker(amount_of_helics_federates, simulation.simulation_id, simulation.simulator_id)
+        broker_ip = self.k8s_api.deploy_helics_broker(amount_of_helics_federates, amount_of_helics_federates_esdl_message, simulation.simulation_id, simulation.simulator_id)
         for model in models:
             calculation_service_names = [calculation_service.esdl_type for calculation_service in simulation.calculation_services]
             self.k8s_api.deploy_model(simulation, model, broker_ip, calculation_service_names)
@@ -58,5 +57,5 @@ class SimulationExecutor:
         self._send_esdl_file(simulation, models, broker_ip)
         self.simulation_inventory.set_state_for_all_models(simulation.simulation_id, ProgressState.DEPLOYED)
 
-    def deploy_simulation(self, simulation : Simulation):
-        asyncio.run(self._deploy_simulation_async(simulation))
+    def terminate_simulation(self, simulation_id : str):
+        pass

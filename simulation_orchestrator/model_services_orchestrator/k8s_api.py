@@ -122,9 +122,9 @@ class K8sApi:
             raise ConnectionError("Took to long to put pod into running state")
         return pod_ip
 
-    def deploy_helics_broker(self, amount_of_federates, simulation_id, simulator_id):
+    def deploy_helics_broker(self, amount_of_federates, amount_of_federates_esdl_message, simulation_id, simulator_id):
         broker_pod_name = f'{HELICS_BROKER_POD_NAME}-{simulation_id}'
-        self.deploy_new_pod(broker_pod_name, HELICS_BROKER_IMAGE_URL,[kubernetes.client.V1EnvVar("AMOUNT_OF_FEDERATES", str(amount_of_federates)), kubernetes.client.V1EnvVar("HELICS_BROKER_PORT", str(HELICS_BROKER_PORT)), kubernetes.client.V1EnvVar("AMOUNT_OF_ESDL_MESSAGE_FEDERATES", str(amount_of_federates))], {'simulation_id': simulation_id, 'simulator_id': simulator_id, 'model_id': broker_pod_name})
+        self.deploy_new_pod(broker_pod_name, HELICS_BROKER_IMAGE_URL,[kubernetes.client.V1EnvVar("AMOUNT_OF_FEDERATES", str(amount_of_federates)), kubernetes.client.V1EnvVar("HELICS_BROKER_PORT", str(HELICS_BROKER_PORT)), kubernetes.client.V1EnvVar("AMOUNT_OF_ESDL_MESSAGE_FEDERATES", str(amount_of_federates_esdl_message))], {'simulation_id': simulation_id, 'simulator_id': simulator_id, 'model_id': broker_pod_name})
         broker_ip = self.await_pod_to_running_state(broker_pod_name)
         return broker_ip
 
@@ -139,12 +139,13 @@ class K8sApi:
         }
         env_vars = self.generic_model_env_var
         env_vars["esdl_ids"] = ';'.join(model.esdl_ids)
+        env_vars["esdl_type"] = model.esdl_type
         env_vars["broker_ip"] = broker_ip
         env_vars["simulation_id"] = simulation.simulation_id
         env_vars["model_id"] = model.model_id
         env_vars["calculation_services"] = ';'.join(esdl_types_calculation_services)
-        env_vars["start_time"] = simulation.simulation_start_datetime
-        env_vars["simulation_duration_in_seconds"] = simulation.simulation_duration_in_seconds
+        env_vars["start_time"] = simulation.simulation_start_datetime.strftime(format="%Y-%m-%d %H:%M:%S")
+        env_vars["simulation_duration_in_seconds"] = str(simulation.simulation_duration_in_seconds)
         return self.deploy_new_pod(pod_name, model.service_image_url,[kubernetes.client.V1EnvVar(name, value) for name, value in env_vars.items()], labels)
 
     def delete_model(self, simulator_id: SimulatorId, simulation_id: SimulationId, model_id: ModelId,

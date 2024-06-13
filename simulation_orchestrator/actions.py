@@ -16,7 +16,6 @@ import typing
 
 from rest.schemas.simulation_schemas import SimulationPost
 from simulation_orchestrator import parse_esdl
-from simulation_orchestrator.io.mqtt_client import MqttClient
 from simulation_orchestrator.models.simulation_inventory import SimulationInventory, Simulation
 from simulation_orchestrator.models.simulation_executor import SimulationExecutor
 
@@ -24,7 +23,6 @@ from simulation_orchestrator.types import SimulationId, ProgressState
 
 simulation_inventory: SimulationInventory
 simulation_executor: SimulationExecutor
-mqtt_client : MqttClient
 
 def create_new_simulation(simulation_post : SimulationPost) -> Simulation:
     
@@ -64,8 +62,7 @@ def queue_new_simulation(simulation_post: SimulationPost) -> SimulationId:
     simulation_id = simulation_inventory.queue_simulation(new_simulation)
     simulation_inventory.add_models_to_simulation(new_simulation.simulation_id, model_list)
     if simulation_inventory.nr_of_queued_simulations() == 1:
-        mqtt_client.send_deploy_models(new_simulation.simulator_id, new_simulation.simulation_id,
-                                   new_simulation.keep_logs_hours, new_simulation.log_level)
+        simulation_executor.deploy_simulation(simulation_inventory.get_simulation(simulation_id))
     return simulation_id
 
 def get_simulation_and_status(simulation_id: SimulationId) -> typing.Tuple[typing.Union[Simulation, None], str]:
@@ -82,6 +79,6 @@ def get_simulation_and_status_list() -> typing.List[typing.Tuple[typing.Union[Si
     ]
 
 def terminate_simulation(simulation_id: SimulationId) -> typing.Tuple[typing.Union[Simulation, None], str]:
-    return_val = mqtt_client.terminate_simulation(simulation_id)
+    return_val = simulation_executor.terminate_simulation(simulation_id)
     simulation_inventory.remove_simulation(simulation_id)
     return return_val

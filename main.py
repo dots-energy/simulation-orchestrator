@@ -13,7 +13,6 @@ import threading
 import typing
 import kubernetes
 
-from simulation_orchestrator.io.mqtt_client import MqttClient
 from simulation_orchestrator.models.simulation_inventory import SimulationInventory
 import simulation_orchestrator.actions as actions
 from simulation_orchestrator.io.log import LOGGER
@@ -52,11 +51,6 @@ class EnvConfig:
                    ('KUBERNETES_PORT', '6443', int, False),
                    ('KUBERNETES_API_TOKEN', None, str, True),
                    ('KUBERNETES_PULL_IMAGE_SECRET_NAME', None, str, False),
-                   ('MQTT_HOST', 'localhost', str, False),
-                   ('MQTT_PORT', '1883', int, False),
-                   ('MQTT_QOS', '0', int, False),
-                   ('MQTT_USERNAME', '', str, False),
-                   ('MQTT_PASSWORD', '', str, True),
                    ('INFLUXDB_HOST', '', str, False),
                    ('INFLUXDB_PORT', '', str, False),
                    ('INFLUXDB_USER', '', str, False),
@@ -91,20 +85,6 @@ def start():
 
     simulation_inventory = SimulationInventory()
 
-    mqtt_client = MqttClient(
-        host=config['MQTT_HOST'],
-        port=config['MQTT_PORT'],
-        qos=config['MQTT_QOS'],
-        username=config['MQTT_USERNAME'],
-        password=config['MQTT_PASSWORD'],
-        influxdb_host=config['INFLUXDB_HOST'],
-        influxdb_port=config['INFLUXDB_PORT'],
-        influxdb_user=config['INFLUXDB_USER'],
-        influxdb_password=config['INFLUXDB_PASSWORD'],
-        influxdb_name=config['INFLUXDB_NAME'],
-        simulation_inventory=simulation_inventory
-    )
-
     configuration = kubernetes.client.Configuration()
     configuration.api_key_prefix['authorization'] = 'Bearer'
     configuration.api_key['authorization'] = config['KUBERNETES_API_TOKEN']
@@ -123,12 +103,6 @@ def start():
 
     actions.simulation_inventory = simulation_inventory
     actions.simulation_executor = SimulationExecutor(K8sApi(kubernetes_client_api, config['KUBERNETES_PULL_IMAGE_SECRET_NAME'].strip(), generic_model_env_var), simulation_inventory)
-
-    actions.mqtt_client = mqtt_client
-
-    t = threading.Thread(target=mqtt_client.start, name='mqtt client')
-    t.daemon = True
-    t.start()
     influxdb_client: InfluxDBConnector = InfluxDBConnector(config['INFLUXDB_HOST'], config['INFLUXDB_PORT'],
                                                            config['INFLUXDB_USER'], config['INFLUXDB_PASSWORD'],
                                                            config['INFLUXDB_NAME'])

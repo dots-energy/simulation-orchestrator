@@ -52,7 +52,7 @@ def add_esdl_object(service_info_dict: dict[str, CalculationServiceInfo], calcul
         if calc_service.calc_service_name in service_info_dict:
             service_info_dict[calc_service.calc_service_name].esdl_ids.append(esdl_obj.id)
         else:
-            service_info_dict[calc_service.calc_service_name] = CalculationServiceInfo(calc_service.calc_service_name, calc_service.service_image_url, calc_service.nr_of_models, [esdl_obj.id])
+            service_info_dict[calc_service.calc_service_name] = CalculationServiceInfo(calc_service.calc_service_name, calc_service.service_image_url, calc_service.nr_of_models, type(esdl_obj).__name__, [esdl_obj.id])
 
 def get_model_list(calculation_services: List[CalculationService], esdl_base64string: str) -> List[Model]:
     try:
@@ -71,13 +71,13 @@ def get_model_list(calculation_services: List[CalculationService], esdl_base64st
         # create model(s) per calculation service
         model_list: List[Model] = []
         for service_info in service_info_dict.values():
-            add_service_models(service_info, model_list, calculation_services, energy_system)
+            add_service_models(service_info, model_list)
     except Exception as ex:
         raise IOError(f"Error getting Model list from ESDL: {ex},")
 
     return model_list
 
-def add_service_models(service_info : CalculationServiceInfo, model_list, calculation_services : List[CalculationService], energy_system : EnergySystem):
+def add_service_models(service_info : CalculationServiceInfo, model_list):
     nr_of_esdl_objects = len(service_info.esdl_ids)
     if service_info.nr_of_models == 0:
         nr_of_objects_in_model = 1
@@ -100,6 +100,7 @@ def add_service_models(service_info : CalculationServiceInfo, model_list, calcul
                 esdl_ids=esdl_ids,
                 calc_service_name=service_info.calc_service_name,
                 service_image_url=service_info.service_image_url,
-                current_state=ProgressState.REGISTERED,
+                esdl_type=service_info.esdl_type,
+                current_state=ProgressState.REGISTERED
             )
         )
