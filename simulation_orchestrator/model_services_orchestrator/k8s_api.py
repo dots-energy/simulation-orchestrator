@@ -146,6 +146,7 @@ class K8sApi:
         env_vars["calculation_services"] = ';'.join(esdl_types_calculation_services)
         env_vars["start_time"] = simulation.simulation_start_datetime.strftime(format="%Y-%m-%d %H:%M:%S")
         env_vars["simulation_duration_in_seconds"] = str(simulation.simulation_duration_in_seconds)
+        env_vars["log_level"] = simulation.log_level
         return self.deploy_new_pod(pod_name, model.service_image_url,[kubernetes.client.V1EnvVar(name, value) for name, value in env_vars.items()], labels)
 
     def delete_model(self, simulator_id: SimulatorId, simulation_id: SimulationId, model_id: ModelId,
@@ -162,25 +163,6 @@ class K8sApi:
                 success = True
             return success
         return False
-
-    def retrieve_last_log_lines(self,
-                                      simulator_id: SimulatorId,
-                                      simulation_id: SimulationId,
-                                      model_id: ModelId,
-                                      num_of_lines: int) -> typing.Optional[str]:
-        pod_name = self.model_to_pod_name(simulator_id, simulation_id, model_id)
-        LOGGER.info(f'Retrieving last log lines for pod {pod_name}')
-
-        try:
-            last_log_lines = self.k8s_core_api.read_namespaced_pod_log(
-                                  name=pod_name,
-                                  namespace=SIMULATION_NAMESPACE,
-                                  follow=False,
-                                  tail_lines=num_of_lines)
-        except kubernetes.client.ApiException as exc:
-            LOGGER.warning(f'Could not retrieve last log lines for pod {pod_name}: {exc}')
-            last_log_lines = None
-        return last_log_lines
 
     def list_pods_status_per_simulation_id(self) -> typing.Dict[SimulationId, typing.List[PodStatus]]:
         api_response: kubernetes.client.V1PodList

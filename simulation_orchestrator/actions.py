@@ -79,6 +79,12 @@ def get_simulation_and_status_list() -> typing.List[typing.Tuple[typing.Union[Si
     ]
 
 def terminate_simulation(simulation_id: SimulationId) -> typing.Tuple[typing.Union[Simulation, None], str]:
-    return_val = simulation_executor.terminate_simulation(simulation_id)
+    simulation = simulation_inventory.get_simulation(simulation_id)
+    status_description = simulation_inventory.get_status_description(simulation_id)
+        
+    simulation_executor.terminate_simulation(simulation_id)
     simulation_inventory.remove_simulation(simulation_id)
-    return return_val
+    return (
+            simulation,
+            status_description
+        )
