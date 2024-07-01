@@ -5,6 +5,7 @@ from typing import List
 from simulation_orchestrator.model_services_orchestrator.k8s_api import K8sApi, HELICS_BROKER_PORT
 from rest.schemas.simulation_schemas import Simulation
 from simulation_orchestrator.io.log import LOGGER
+from dots_infrastructure.Common import terminate_requested_at_commands_endpoint, terminate_simulation, destroy_federate
 
 import helics as h
 
@@ -57,8 +58,7 @@ class SimulationExecutor:
             h.helicsEndpointSendMessage(message_enpoint, esdl_message)
 
         h.helicsFederateRequestTime(message_federate, h.HELICS_TIME_MAXTIME)
-        h.helicsFederateDisconnect(message_federate)
-        h.helicsFederateDestroy(message_federate)
+        destroy_federate(message_federate)
 
     def _init_simulation(self, simulation : Simulation):
         amount_of_helics_federates_esdl_message = sum([calculation_service.nr_of_models for calculation_service in simulation.calculation_services]) + 1 # SO is also a federate that is part of the esdl federation
@@ -88,30 +88,15 @@ class SimulationExecutor:
         update_interval = int(h.helicsFederateGetTimeProperty(federate, h.HELICS_PROPERTY_TIME_PERIOD))
         grantedtime = 0
         terminate_requested = False
-        while not so_federate_info.terminate_simulation and grantedtime < total_interval and not terminate_requested:            
+        while not so_federate_info.terminate_simulation and grantedtime < total_interval and not terminate_requested:
             requested_time = grantedtime + update_interval
-            h.helicsFederateRequestTime(federate, requested_time)
-            if h.helicsEndpointHasMessage(message_endpoint):
-                LOGGER.info("Message received")
-                command = h.helicsMessageGetString(h.helicsEndpointGetMessage(message_endpoint))
-                LOGGER.info(f"Message received {command}")
-                if command == "0":
-                    terminate_requested = True
+            grantedtime = h.helicsFederateRequestTime(federate, requested_time)
+            terminate_requested = terminate_requested_at_commands_endpoint(message_endpoint)
 
-        if grantedtime < total_interval and not terminate_requested:
-            query = h.helicsCreateQuery("broker", "endpoint_details")
-            endpoint_details_json = h.helicsQueryExecute(query, federate)
-            endpoints_details = json.loads(str(endpoint_details_json).replace("'", '"'))
-            termination_message = h.helicsEndpointCreateMessage(message_endpoint)
-            h.helicsMessageSetString(termination_message, "0")
-            for endpoint in endpoints_details["endpoints"]:
-                endpoint_name = str(endpoint["name"])
-                if endpoint_name.endswith("commands"):
-                    h.helicsMessageSetDestination(termination_message, endpoint_name)
-                    h.helicsEndpointSendMessage(message_endpoint, termination_message)
+        if so_federate_info.terminate_simulation:
+            terminate_simulation(federate, message_endpoint)
 
-        h.helicsFederateDisconnect(federate)
-        h.helicsFederateDestroy(federate)
+        destroy_federate(federate)
         self.simulation_inventory.set_state_for_all_models(so_federate_info.simulation.simulation_id, ProgressState.TERMINATED_SUCCESSFULL)
 
 
